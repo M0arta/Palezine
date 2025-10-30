@@ -1,126 +1,223 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>PaleZine</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PaleZine</title>
 
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: radial-gradient(circle at 20% 20%, #2a2a2a 0%, #000 80%);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", Roboto, "Helvetica Neue", sans-serif;
-      color: #fff;
-      min-height: 100vh;
-      display: flex; flex-direction: column; align-items: center;
-    }
-    header {
-      padding: 1rem; text-align: center; color: #d0d0d0; font-size: 0.9rem; line-height: 1.4;
-    }
-    header .title { font-weight: 600; font-size: 1rem; color: #fff; }
-    header a.download-link { color: #8ecbff; text-decoration: none; font-size: 0.8rem; }
-    header a.download-link:hover { text-decoration: underline; }
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(circle at 20% 20%, #2a2a2a 0%, #000 80%);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", Roboto, "Helvetica Neue", sans-serif;
+    color: #fff;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  header {
+    position: sticky; top: 0; z-index: 5;
+    width: 100%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: .75rem 1rem;
+    display: flex; gap: .75rem; align-items: center; justify-content: center; flex-wrap: wrap;
+  }
+  .title { font-weight: 600; }
+  .btn {
+    appearance: none; border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06); color: #e9f3ff;
+    padding: .45rem .7rem; border-radius: 8px; font-size: .85rem; cursor: pointer;
+  }
+  .btn:hover { background: rgba(255,255,255,0.1); }
+  .btn.secondary { background: transparent; }
 
-    .book-wrapper { width: 100%; max-width: 900px; padding: 1rem 1rem 2rem; display: flex; justify-content: center; align-items: center; }
+  .wrap { width: 100%; max-width: 900px; padding: 1rem; display: flex; justify-content: center; }
 
-    #flipbook {
-      width: 900px; height: 600px; background: #1a1a1a; border-radius: 12px;
-      box-shadow: 0 40px 120px rgba(0,0,0,0.9), 0 2px 4px rgba(255,255,255,0.05) inset;
-      overflow: hidden;
-    }
-    #flipbook .page { width: 450px; height: 600px; background-size: cover; background-position: center center; }
+  /* Flipbook container (desktop) */
+  #flipbook {
+    width: 900px; height: 600px; background: #1a1a1a; border-radius: 12px;
+    box-shadow: 0 40px 120px rgba(0,0,0,0.9), 0 2px 4px rgba(255,255,255,0.05) inset;
+    overflow: hidden; display: none; /* hidden on mobile by default */
+  }
+  #flipbook .page { width: 450px; height: 600px; background-size: cover; background-position: center; }
 
-    footer { color: #555; font-size: 0.7rem; padding: 0 1rem 3rem; text-align: center; line-height: 1.4; max-width: 900px; }
-    footer .keys {
-      color: #777; font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-      font-size: 0.7rem; background: rgba(255,255,255,0.05); padding: 0.1rem 0.4rem; border-radius: 4px; margin: 0 0.15rem;
-    }
+  /* Scroll reader (mobile default) */
+  #scrollReader {
+    width: 100%; max-width: 900px; display: none;
+  }
+  .page-img {
+    width: 100%; height: auto; display: block;
+    background: #111;
+    margin: 0 0 .75rem 0;
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
 
-    @media (max-width: 950px) {
-      #flipbook { width: 90vw; height: calc(90vw * (600/900)); }
-      #flipbook .page { width: 50%; height: 100%; }
-    }
-  </style>
+  footer { color: #aaa; font-size: .8rem; padding: 1rem; text-align: center; opacity: .8; }
 
-  <!-- jQuery + Turn.js -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/blasten/turn.js/turn.min.js"></script>
+  /* Small screens: default to scroll, scale flipbook if toggled */
+  @media (max-width: 950px) {
+    #flipbook { width: 100%; height: calc(100vw * (600/900)); }
+    #flipbook .page { width: 50%; height: 100%; }
+  }
+</style>
+
+<!-- jQuery + Turn.js (only used in flip mode) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/blasten/turn.js/turn.min.js"></script>
 </head>
 <body>
 
-  <header>
-    <div class="title">PaleZine</div>
-    <div><a class="download-link" href="booklet.pdf" download>Download full PDF</a></div>
-  </header>
+<header>
+  <span class="title">PaleZine</span>
+  <button id="toggleMode" class="btn">Switch to Flip</button>
+  <a class="btn secondary" href="booklet.pdf" download>Download PDF</a>
+  <a id="openPDF" class="btn secondary" href="booklet.pdf" target="_blank" rel="noopener">Open PDF</a>
+</header>
 
-  <div class="book-wrapper">
-    <div id="flipbook"><!-- pages injected by JS --></div>
-  </div>
+<div class="wrap">
+  <div id="flipbook"><!-- pages injected in flip mode --></div>
+  <div id="scrollReader"><!-- pages injected in scroll mode --></div>
+</div>
 
-  <footer>
-    <div>Desktop: click corners or use <span class="keys">←</span><span class="keys">→</span> to flip pages.</div>
-    <div>Mobile: swipe left / right.</div>
-  </footer>
+<footer>
+  Tip: On mobile, use the default <em>Scroll</em> mode for easiest reading. You can switch to <em>Flip</em> anytime.
+</footer>
 
-  <script>
-    // ---- CONFIG for your naming pattern ----
-    const FOLDER = "pages/";                // where images live
-    const PREFIX = "booklet-page-";         // start of filename
-    const PAD = 3;                          // 001, 002, ...
-    const EXT = ".jpg";                     // file extension
-    const START_INDEX = 1;                  // first page number (001)
-    const MAX_PAGES_TO_TRY = 1000;          // safety cap
+<script>
+  // ---- CONFIG (matches your filenames) ----
+  const FOLDER = "pages/";
+  const PREFIX = "booklet-page-";
+  const PAD = 3;                // 001, 002, ...
+  const EXT = ".jpg";           // change to ".jpeg" if needed
+  const START_INDEX = 1;
+  const MAX_PAGES_TO_TRY = 200; // safety cap
 
-    function pad(num, size) { return String(num).padStart(size, "0"); }
+  // State
+  let pageURLs = [];
+  let mode = null; // 'scroll' or 'flip'
+  const isSmallScreen = () => window.matchMedia('(max-width: 950px)').matches;
 
-    function imgExists(url) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => resolve(true);
-        img.onerror = () => resolve(false);
-        img.src = url + (window.location.hostname.endsWith("github.io") ? "" : ("?v=" + Date.now())); // cache-bust locally
-      });
+  function pad(num, size){ return String(num).padStart(size, "0"); }
+
+  function imgExists(url){
+    return new Promise((resolve)=>{
+      const img = new Image();
+      img.onload = ()=>resolve(true);
+      img.onerror = ()=>resolve(false);
+      img.src = url + (window.location.hostname.endsWith("github.io") ? "" : ("?v=" + Date.now()));
+    });
+  }
+
+  async function discoverPages(){
+    const urls = [];
+    for(let i = START_INDEX; i < START_INDEX + MAX_PAGES_TO_TRY; i++){
+      const url = `${FOLDER}${PREFIX}${pad(i, PAD)}${EXT}`;
+      /* eslint-disable no-await-in-loop */
+      const ok = await imgExists(url);
+      if(!ok) break;
+      urls.push(url);
     }
+    return urls;
+  }
 
-    async function buildFlipbook() {
-      const el = document.getElementById("flipbook");
-      let count = 0;
+  // -------- Scroll mode (mobile-friendly) --------
+  function mountScrollReader(){
+    const container = document.getElementById('scrollReader');
+    container.innerHTML = '';
+    pageURLs.forEach((src, idx)=>{
+      const img = document.createElement('img');
+      img.className = 'page-img';
+      img.loading = 'lazy';
+      img.alt = `Page ${idx+1}`;
+      img.src = src;
+      container.appendChild(img);
+    });
+    container.style.display = 'block';
+    document.getElementById('flipbook').style.display = 'none';
+    mode = 'scroll';
+    document.getElementById('toggleMode').textContent = 'Switch to Flip';
+  }
 
-      for (let i = START_INDEX; i < START_INDEX + MAX_PAGES_TO_TRY; i++) {
-        const fname = `${FOLDER}${PREFIX}${pad(i, PAD)}${EXT}`;
-        /* eslint-disable no-await-in-loop */
-        const ok = await imgExists(fname);
-        if (!ok) break;
+  // -------- Flip mode (desktop) --------
+  function mountFlipbook(){
+    const flip = document.getElementById('flipbook');
+    const scroll = document.getElementById('scrollReader');
+    scroll.style.display = 'none';
+    flip.innerHTML = '';
+    pageURLs.forEach((src)=>{
+      const div = document.createElement('div');
+      div.className = 'page';
+      div.style.backgroundImage = `url('${src}')`;
+      flip.appendChild(div);
+    });
+    flip.style.display = 'block';
 
-        const pageDiv = document.createElement("div");
-        pageDiv.className = "page";
-        pageDiv.style.backgroundImage = `url('${fname}')`;
-        el.appendChild(pageDiv);
-        count++;
+    // Init or re-init turn.js
+    try {
+      const $flip = $("#flipbook");
+      if ($flip.data('initialized')) {
+        $flip.turn('destroy').remove();
+        const newDiv = document.createElement('div');
+        newDiv.id = 'flipbook';
+        newDiv.innerHTML = flip.innerHTML;
+        flip.parentNode.insertBefore(newDiv, flip);
+        flip.remove();
       }
-
-      if (count === 0) {
-        el.innerHTML = "<div style='display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:#bbb;padding:1rem;text-align:center'>No pages found. Filenames must look like <code>pages/booklet-page-001.jpg</code>, <code>...-002.jpg</code>, etc.</div>";
-        return;
-      }
-
       $("#flipbook").turn({
-        width: 900,
-        height: 600,
+        width: isSmallScreen() ? Math.min(window.innerWidth, 900) : 900,
+        height: isSmallScreen() ? Math.min(window.innerWidth, 900) * (600/900) : 600,
         autoCenter: true,
         elevation: 50,
-        gradients: true
-      });
+        gradients: true,
+        display: isSmallScreen() ? 'single' : 'double'  // single page on small screens
+      }).data('initialized', true);
 
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "ArrowRight") $("#flipbook").turn("next");
-        if (e.key === "ArrowLeft") $("#flipbook").turn("previous");
-      });
+      // keyboard nav
+      document.onkeydown = (e)=>{
+        if (e.key === 'ArrowRight') $("#flipbook").turn("next");
+        if (e.key === 'ArrowLeft') $("#flipbook").turn("previous");
+      };
+    } catch(e){
+      console.error(e);
     }
 
-    buildFlipbook();
-  </script>
+    mode = 'flip';
+    document.getElementById('toggleMode').textContent = 'Switch to Scroll';
+  }
+
+  // -------- Toggle mode --------
+  function toggleMode(){
+    if (mode === 'flip') mountScrollReader(); else mountFlipbook();
+  }
+
+  // -------- Init --------
+  (async function init(){
+    pageURLs = await discoverPages();
+    if (pageURLs.length === 0) {
+      document.querySelector('.wrap').innerHTML =
+        "<div style='color:#ccc;padding:1rem;text-align:center'>No pages found. Check paths like <code>pages/booklet-page-001.jpg</code>.</div>";
+      return;
+    }
+    // Default: scroll on small screens, flip on large screens
+    if (isSmallScreen()) mountScrollReader(); else mountFlipbook();
+
+    // Toggle button
+    document.getElementById('toggleMode').addEventListener('click', toggleMode);
+
+    // Reflow on resize (e.g., rotate phone)
+    let resizeTimer;
+    window.addEventListener('resize', ()=>{
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(()=>{
+        if (mode === 'flip') mountFlipbook();
+        // scroll mode needs no reflow
+      }, 150);
+    });
+  })();
+</script>
 
 </body>
 </html>
