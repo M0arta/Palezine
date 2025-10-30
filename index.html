@@ -5,105 +5,46 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>PaleZine</title>
 
-  <!-- Basic minimal dark UI -->
   <style>
     * { box-sizing: border-box; }
-
     body {
       margin: 0;
       background: radial-gradient(circle at 20% 20%, #2a2a2a 0%, #000 80%);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", Roboto, "Helvetica Neue", sans-serif;
       color: #fff;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      display: flex; flex-direction: column; align-items: center;
     }
-
     header {
-      padding: 1rem;
-      text-align: center;
-      color: #d0d0d0;
-      font-size: 0.9rem;
-      line-height: 1.4;
+      padding: 1rem; text-align: center; color: #d0d0d0; font-size: 0.9rem; line-height: 1.4;
     }
-
-    header .title {
-      font-weight: 600;
-      font-size: 1rem;
-      color: #fff;
-    }
-
-    header a.download-link {
-      color: #8ecbff;
-      text-decoration: none;
-      font-size: 0.8rem;
-    }
+    header .title { font-weight: 600; font-size: 1rem; color: #fff; }
+    header a.download-link { color: #8ecbff; text-decoration: none; font-size: 0.8rem; }
     header a.download-link:hover { text-decoration: underline; }
 
-    .book-wrapper {
-      width: 100%;
-      max-width: 900px;
-      padding: 1rem 1rem 2rem;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
+    .book-wrapper { width: 100%; max-width: 900px; padding: 1rem 1rem 2rem; display: flex; justify-content: center; align-items: center; }
 
     #flipbook {
-      width: 900px;    /* total width = 2 pages side by side */
-      height: 600px;   /* height of each page */
-      background: #1a1a1a;
-      border-radius: 12px;
-      box-shadow:
-        0 40px 120px rgba(0,0,0,0.9),
-        0 2px 4px rgba(255,255,255,0.05) inset;
+      width: 900px; height: 600px; background: #1a1a1a; border-radius: 12px;
+      box-shadow: 0 40px 120px rgba(0,0,0,0.9), 0 2px 4px rgba(255,255,255,0.05) inset;
       overflow: hidden;
     }
+    #flipbook .page { width: 450px; height: 600px; background-size: cover; background-position: center center; }
 
-    #flipbook .page {
-      width: 450px;   /* half of 900px */
-      height: 600px;
-      background-size: cover;
-      background-position: center center;
-    }
-
-    footer {
-      color: #555;
-      font-size: 0.7rem;
-      padding: 0 1rem 3rem;
-      text-align: center;
-      line-height: 1.4;
-      max-width: 900px;
-    }
-
+    footer { color: #555; font-size: 0.7rem; padding: 0 1rem 3rem; text-align: center; line-height: 1.4; max-width: 900px; }
     footer .keys {
-      color: #777;
-      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-      font-size: 0.7rem;
-      background: rgba(255,255,255,0.05);
-      padding: 0.1rem 0.4rem;
-      border-radius: 4px;
-      margin: 0 0.15rem;
+      color: #777; font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.7rem; background: rgba(255,255,255,0.05); padding: 0.1rem 0.4rem; border-radius: 4px; margin: 0 0.15rem;
     }
 
-    /* Responsive: scale down on narrow screens */
     @media (max-width: 950px) {
-      #flipbook {
-        width: 90vw;
-        height: calc(90vw * (600/900)); /* keep aspect ratio */
-      }
-      #flipbook .page {
-        width: 50%;
-        height: 100%;
-      }
+      #flipbook { width: 90vw; height: calc(90vw * (600/900)); }
+      #flipbook .page { width: 50%; height: 100%; }
     }
   </style>
 
-  <!-- jQuery (Turn.js depends on this) -->
+  <!-- jQuery + Turn.js -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-  <!-- Turn.js (page flip) -->
   <script src="https://cdn.jsdelivr.net/gh/blasten/turn.js/turn.min.js"></script>
 </head>
 <body>
@@ -114,61 +55,56 @@
   </header>
 
   <div class="book-wrapper">
-    <div id="flipbook">
-      <!-- Pages will be injected by JS -->
-    </div>
+    <div id="flipbook"><!-- pages injected by JS --></div>
   </div>
 
   <footer>
-    <div>Desktop: click corners or use
-      <span class="keys">←</span>
-      <span class="keys">→</span>
-      to flip pages.
-    </div>
+    <div>Desktop: click corners or use <span class="keys">←</span><span class="keys">→</span> to flip pages.</div>
     <div>Mobile: swipe left / right.</div>
   </footer>
 
   <script>
-    // Config
-    const PAGE_PREFIX = "pages/page"; // your images live at pages/page1.jpg, page2.jpg, ...
-    const PAGE_EXT = ".jpg";
-    const MAX_PAGES_TO_TRY = 500;     // safety cap so we don't loop forever
+    // ---- CONFIG for your naming pattern ----
+    const FOLDER = "pages/";                // where images live
+    const PREFIX = "booklet-page-";         // start of filename
+    const PAD = 3;                          // 001, 002, ...
+    const EXT = ".jpg";                     // file extension
+    const START_INDEX = 1;                  // first page number (001)
+    const MAX_PAGES_TO_TRY = 1000;          // safety cap
 
-    // Utility: check if an image exists
+    function pad(num, size) { return String(num).padStart(size, "0"); }
+
     function imgExists(url) {
       return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => resolve(true);
         img.onerror = () => resolve(false);
-        img.src = url + "?v=" + Date.now(); // bust cache while testing
+        img.src = url + (window.location.hostname.endsWith("github.io") ? "" : ("?v=" + Date.now())); // cache-bust locally
       });
     }
 
     async function buildFlipbook() {
-      const flipbookEl = document.getElementById('flipbook');
-      let pageCount = 0;
+      const el = document.getElementById("flipbook");
+      let count = 0;
 
-      for (let i = 1; i <= MAX_PAGES_TO_TRY; i++) {
-        const url = `${PAGE_PREFIX}${i}${PAGE_EXT}`;
-        // Stop at first missing file
-        // If your numbering has gaps, keep files consecutive (1..N)
+      for (let i = START_INDEX; i < START_INDEX + MAX_PAGES_TO_TRY; i++) {
+        const fname = `${FOLDER}${PREFIX}${pad(i, PAD)}${EXT}`;
         /* eslint-disable no-await-in-loop */
-        const ok = await imgExists(url);
+        const ok = await imgExists(fname);
         if (!ok) break;
 
-        const pageDiv = document.createElement('div');
-        pageDiv.className = 'page';
-        pageDiv.style.backgroundImage = `url('${url}')`;
-        flipbookEl.appendChild(pageDiv);
-        pageCount++;
+        const pageDiv = document.createElement("div");
+        pageDiv.className = "page";
+        pageDiv.style.backgroundImage = `url('${fname}')`;
+        el.appendChild(pageDiv);
+        count++;
       }
 
-      if (pageCount === 0) {
-        flipbookEl.innerHTML = "<div style='display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:#bbb;padding:1rem;text-align:center'>No pages found. Make sure your images are named <code>pages/page1.jpg, page2.jpg, ...</code></div>";
+      if (count === 0) {
+        el.innerHTML = "<div style='display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:#bbb;padding:1rem;text-align:center'>No pages found. Filenames must look like <code>pages/booklet-page-001.jpg</code>, <code>...-002.jpg</code>, etc.</div>";
         return;
       }
 
-      // Init Turn.js
       $("#flipbook").turn({
         width: 900,
         height: 600,
@@ -177,14 +113,12 @@
         gradients: true
       });
 
-      // Keyboard nav
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight') $("#flipbook").turn("next");
-        if (e.key === 'ArrowLeft') $("#flipbook").turn("previous");
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight") $("#flipbook").turn("next");
+        if (e.key === "ArrowLeft") $("#flipbook").turn("previous");
       });
     }
 
-    // Start
     buildFlipbook();
   </script>
 
